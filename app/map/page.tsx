@@ -1058,7 +1058,7 @@ export default function MapPage() {
         visitedLocationIdSet={visitedLocationIdSet}
       />
       <div
-        className="absolute inset-0 z-30 will-change-transform"
+        className="pointer-events-none absolute inset-0 z-30 will-change-transform"
         ref={discoveryLayerRef}
         style={{
           transform: getCameraTransform({ x: 0, y: 0 }),
