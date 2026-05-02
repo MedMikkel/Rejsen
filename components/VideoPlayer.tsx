@@ -406,7 +406,6 @@ export function VideoPlayer({
               max={1}
               min={0}
               onChange={handleVolumeChange}
-              onInput={handleVolumeChange}
               step={0.01}
               type="range"
               value={effectiveVolume}
