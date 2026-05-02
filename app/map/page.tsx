@@ -49,7 +49,8 @@ type PathState = "locked" | "active" | "visited";
 type DiscoveryPointType =
   | "faxeCan"
   | "calendarArtifact"
-  | "instantMove";
+  | "instantMove"
+  | "basicInfoProfile";
 
 type DiscoveryPoint = {
   id: string;
@@ -86,7 +87,7 @@ const locations: Location[] = [
   },
   {
     id: "eastern-watch",
-    name: "Eastern Watch",
+    name: "Under produktion",
     x: 70,
     y: 34,
     unlocked: false,
@@ -94,7 +95,7 @@ const locations: Location[] = [
   },
   {
     id: "southern-isle",
-    name: "Southern Isle",
+    name: "Djurs Sommertutorland",
     x: 50,
     y: 78,
     unlocked: false,
@@ -102,7 +103,7 @@ const locations: Location[] = [
   },
   {
     id: "final-sanctum",
-    name: "Final Sanctum",
+    name: "Please vælg mig",
     x: 62,
     y: 58,
     unlocked: false,
@@ -124,7 +125,7 @@ const discoveryPoints: DiscoveryPoint[] = [
     x: 40,
     y: 73,
     type: "faxeCan",
-    content: "Du fandt en gemt Faxe Kondi. Kortet skifter farve.",
+    content: "Du fandt en gemt Faxe Kondi. Pink for the win.",
   },
   {
     id: "calendar-artifact",
@@ -140,6 +141,13 @@ const discoveryPoints: DiscoveryPoint[] = [
     type: "instantMove",
     content: videos.instantMove,
   },
+  {
+    id: "basic-info-profile",
+    x: 22,
+    y: 28,
+    type: "basicInfoProfile",
+    content: "Basic info profile",
+  },
 ];
 
 const getConnectionId = (connection: Connection) =>
@@ -148,6 +156,8 @@ const getConnectionId = (connection: Connection) =>
 const MARKER_FEEDBACK_MS = 220;
 const PATH_IGNITE_MS = 900;
 const MAP_CAMERA_SCALE = 1.75;
+const MAP_INTRO_CAMERA_SCALE = 2.05;
+const MAP_INTRO_DURATION_MS = 2400;
 const PINK_MODE_DISCOVERY_POINT_ID = "pink-mode-artifact";
 
 const FINAL_LOCATION_ID = "final-sanctum";
@@ -158,8 +168,10 @@ const requiredLocationIds = locations
 const clamp = (value: number, min: number, max: number) =>
   Math.min(Math.max(value, min), max);
 
-const getCameraTransform = (cameraOffset: Point) =>
-  `translate3d(${cameraOffset.x}px, ${cameraOffset.y}px, 0) scale(${MAP_CAMERA_SCALE})`;
+const getCameraTransform = (
+  cameraOffset: Point,
+  scale = MAP_CAMERA_SCALE,
+) => `translate3d(${cameraOffset.x}px, ${cameraOffset.y}px, 0) scale(${scale})`;
 
 const getCameraBounds = (containerSize: Size) => {
   const maxX = ((MAP_CAMERA_SCALE - 1) * containerSize.width) / 2;
@@ -248,7 +260,7 @@ const DiscoveryPointMarker = memo(function DiscoveryPointMarker({
   return (
     <button
       aria-label={`Åbn discovery point: ${discoveryPoint.type}`}
-      className={`discovery-point-marker discovery-point-${discoveryPoint.type} discovery-point-${discoveryPoint.id}`}
+      className={`discovery-point-marker pointer-events-auto discovery-point-${discoveryPoint.type} discovery-point-${discoveryPoint.id}`}
       onClick={() => onOpen(discoveryPoint.id)}
       onPointerDown={(event) => event.stopPropagation()}
       style={{
@@ -274,6 +286,13 @@ const DiscoveryPointMarker = memo(function DiscoveryPointMarker({
           <span className="discovery-point-can-tab" />
           <span className="discovery-point-can-body" />
           <span className="discovery-point-can-bottom" />
+        </span>
+      ) : null}
+      {discoveryPoint.type === "basicInfoProfile" ? (
+        <span aria-hidden="true" className="discovery-point-traveller-icon">
+          <span className="discovery-point-traveller-head" />
+          <span className="discovery-point-traveller-body" />
+          <span className="discovery-point-traveller-pack" />
         </span>
       ) : null}
       <span className="sr-only">{discoveryPoint.content}</span>
@@ -369,10 +388,25 @@ type DiscoveryPointOverlayProps = {
 };
 
 const discoveryPointTypeLabels: Record<DiscoveryPointType, string> = {
+  basicInfoProfile: "Basic info",
   calendarArtifact: "Kalender",
   faxeCan: "Faxe Kondi",
   instantMove: "Instant move",
 };
+
+const basicInfoProfile = {
+  left: [
+    { label: "Navn", value: "Mikkel" },
+    { label: "Semester", value: "6. del 2" },
+    { label: "Alder", value: "26" },
+  ],
+  right: [
+    { label: "Tutor erfaring", value: "Gammel" },
+    { label: "Civil status", value: "Lykkelig" },
+    { label: "Email", value: "mikkel.juul.christiansen@gmail.com" },
+    { label: "Phone number", value: "+45 60563346" },
+  ],
+} as const;
 
 type CalendarArtifactOverlayProps = {
   onClose: () => void;
@@ -449,7 +483,10 @@ const InstantMoveOverlay = memo(function InstantMoveOverlay({
     const closeTimeout = setTimeout(onClose, 5000);
     const video = videoRef.current;
 
-    video?.play().catch(() => {});
+    if (video) {
+      video.muted = false;
+      video.play().catch(() => {});
+    }
 
     return () => {
       clearTimeout(closeTimeout);
@@ -461,7 +498,6 @@ const InstantMoveOverlay = memo(function InstantMoveOverlay({
       <video
         autoPlay
         className="instant-move-video max-h-full max-w-full rounded-3xl object-contain shadow-2xl"
-        muted
         onEnded={onClose}
         playsInline
         preload="metadata"
@@ -472,10 +508,94 @@ const InstantMoveOverlay = memo(function InstantMoveOverlay({
   );
 });
 
+type BasicInfoProfileOverlayProps = {
+  onClose: () => void;
+};
+
+const BasicInfoProfileOverlay = memo(function BasicInfoProfileOverlay({
+  onClose,
+}: BasicInfoProfileOverlayProps) {
+  return (
+    <div
+      className="basic-info-backdrop fixed inset-0 z-[45] flex items-center justify-center bg-black/60 px-4 py-8 text-white backdrop-blur-[2px]"
+      onClick={onClose}
+      onPointerDown={(event) => event.stopPropagation()}
+    >
+      <div
+        aria-label="Basic info profile"
+        aria-modal="true"
+        className="basic-info-dossier relative w-full max-w-4xl overflow-hidden rounded-[2rem] border border-amber-100/25 bg-[#21170d]/90 px-5 py-6 shadow-2xl shadow-black/50 sm:px-8 sm:py-8"
+        onClick={(event) => event.stopPropagation()}
+        role="dialog"
+      >
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(251,191,36,0.12),transparent_54%),linear-gradient(135deg,rgba(255,255,255,0.08),transparent_36%,rgba(0,0,0,0.2))]" />
+        <div className="relative z-10">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.32em] text-amber-100/65">
+                Explorer dossier
+              </p>
+              <h2 className="mt-2 font-serif text-2xl text-amber-50 sm:text-3xl">
+                Basic info
+              </h2>
+            </div>
+            <button
+              aria-label="Close basic info profile"
+              className="rounded-full border border-amber-100/25 bg-amber-100/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-amber-50 transition hover:scale-105 hover:bg-amber-100/20 focus:outline-none focus:ring-2 focus:ring-amber-100/70"
+              onClick={onClose}
+              type="button"
+            >
+              Luk
+            </button>
+          </div>
+
+          <div className="basic-info-layout mt-8 grid items-center gap-6 md:grid-cols-[1fr_auto_1fr] md:gap-10">
+            <div className="basic-info-label-column basic-info-label-column-left space-y-4">
+              {basicInfoProfile.left.map((field) => (
+                <div
+                  className="basic-info-label basic-info-label-left"
+                  key={field.label}
+                >
+                  <span>{field.label}</span>
+                  <strong>{field.value}</strong>
+                </div>
+              ))}
+            </div>
+
+            <div className="basic-info-portrait mx-auto flex h-48 w-40 items-end justify-center rounded-t-full border border-amber-100/30 bg-amber-100/10 shadow-[0_0_38px_rgba(251,191,36,0.18)] sm:h-56 sm:w-48">
+              <div aria-hidden="true" className="basic-info-silhouette">
+                <span className="basic-info-silhouette-head" />
+                <span className="basic-info-silhouette-body" />
+                <span className="basic-info-silhouette-cloak" />
+              </div>
+            </div>
+
+            <div className="basic-info-label-column basic-info-label-column-right space-y-4">
+              {basicInfoProfile.right.map((field) => (
+                <div
+                  className="basic-info-label basic-info-label-right"
+                  key={field.label}
+                >
+                  <span>{field.label}</span>
+                  <strong>{field.value}</strong>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+});
+
 const DiscoveryPointOverlay = memo(function DiscoveryPointOverlay({
   discoveryPoint,
   onClose,
 }: DiscoveryPointOverlayProps) {
+  if (discoveryPoint.type === "basicInfoProfile") {
+    return <BasicInfoProfileOverlay onClose={onClose} />;
+  }
+
   if (discoveryPoint.type === "calendarArtifact") {
     return <CalendarArtifactOverlay onClose={onClose} />;
   }
@@ -636,6 +756,8 @@ const MapLayer = memo(function MapLayer({
 export default function MapPage() {
   const router = useRouter();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isMapIntroActive, setIsMapIntroActive] = useState(true);
+  const [hasMapIntroSettled, setHasMapIntroSettled] = useState(false);
   const [isPinkMode, setIsPinkMode] = useState(false);
   const [openingLocationId, setOpeningLocationId] = useState<string | null>(
     null,
@@ -668,6 +790,7 @@ export default function MapPage() {
   const offsetStart = useRef<Point>({ x: 0, y: 0 });
   const openVideoTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const activePathTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mapIntroTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const panFrame = useRef<number | null>(null);
   const cameraTransitionTimeout = useRef<ReturnType<typeof setTimeout> | null>(
     null,
@@ -745,6 +868,77 @@ export default function MapPage() {
     [],
   );
 
+  const finishMapIntro = useCallback(
+    (startLocationOffset: Point) => {
+      if (mapIntroTimeout.current) {
+        clearTimeout(mapIntroTimeout.current);
+        mapIntroTimeout.current = null;
+      }
+
+      dragStart.current = null;
+      applyCameraOffset(startLocationOffset);
+      setIsMapIntroActive(false);
+      setHasMapIntroSettled(true);
+    },
+    [applyCameraOffset],
+  );
+
+  const playMapIntro = useCallback(
+    (containerSize: Size) => {
+      const startLocationOffset = getCameraOffsetForLocation(
+        locations[0],
+        containerSize,
+      );
+      const introOffset = clampCameraOffset(
+        {
+          x: startLocationOffset.x - containerSize.width * 0.18,
+          y: startLocationOffset.y + containerSize.height * 0.12,
+        },
+        containerSize,
+      );
+      const cameraLayers = [mapLayerRef.current, discoveryLayerRef.current];
+
+      offset.current = startLocationOffset;
+      setIsMapIntroActive(true);
+
+      cameraLayers.forEach((layer) => {
+        if (!layer) {
+          return;
+        }
+
+        layer.style.transition = "";
+        layer.style.transform = getCameraTransform(
+          introOffset,
+          MAP_INTRO_CAMERA_SCALE,
+        );
+      });
+
+      requestAnimationFrame(() => {
+        cameraLayers.forEach((layer) => {
+          if (!layer) {
+            return;
+          }
+
+          layer.style.transition = `transform ${MAP_INTRO_DURATION_MS}ms cubic-bezier(0.65, 0, 0.35, 1)`;
+          layer.style.transform = getCameraTransform(startLocationOffset);
+        });
+      });
+
+      mapIntroTimeout.current = setTimeout(() => {
+        finishMapIntro(startLocationOffset);
+      }, MAP_INTRO_DURATION_MS);
+    },
+    [finishMapIntro],
+  );
+
+  const skipMapIntro = useCallback(() => {
+    if (!isMapIntroActive || !mapContentSize.width || !mapContentSize.height) {
+      return;
+    }
+
+    finishMapIntro(getCameraOffsetForLocation(locations[0], mapContentSize));
+  }, [finishMapIntro, isMapIntroActive, mapContentSize]);
+
   useEffect(() => {
     document.body.classList.toggle("pink-mode", isPinkMode);
 
@@ -773,7 +967,7 @@ export default function MapPage() {
 
       if (!hasInitializedCamera.current) {
         hasInitializedCamera.current = true;
-        applyCameraOffset(getCameraOffsetForLocation(locations[0], nextSize), true);
+        playMapIntro(nextSize);
         return;
       }
 
@@ -802,6 +996,10 @@ export default function MapPage() {
         clearTimeout(activePathTimeout.current);
       }
 
+      if (mapIntroTimeout.current) {
+        clearTimeout(mapIntroTimeout.current);
+      }
+
       if (panFrame.current) {
         cancelAnimationFrame(panFrame.current);
       }
@@ -813,7 +1011,7 @@ export default function MapPage() {
       resizeObserver?.disconnect();
       window.removeEventListener("resize", updateMapContentSize);
     };
-  }, [applyCameraOffset]);
+  }, [applyCameraOffset, playMapIntro]);
 
   const scheduleMapTransform = () => {
     if (panFrame.current) {
@@ -827,6 +1025,11 @@ export default function MapPage() {
   };
 
   const handlePointerDown = (event: React.PointerEvent<HTMLElement>) => {
+    if (isMapIntroActive) {
+      skipMapIntro();
+      return;
+    }
+
     if (selectedLocationId || openingLocationId || selectedDiscoveryPointId) {
       return;
     }
@@ -848,6 +1051,10 @@ export default function MapPage() {
   };
 
   const handlePointerMove = (event: React.PointerEvent<HTMLElement>) => {
+    if (isMapIntroActive) {
+      return;
+    }
+
     if (!dragStart.current) {
       return;
     }
@@ -935,7 +1142,7 @@ export default function MapPage() {
 
   const openLocation = useCallback(
     (locationId: string) => {
-      if (selectedLocationId || openingLocationId) {
+      if (isMapIntroActive || selectedLocationId || openingLocationId) {
         return;
       }
 
@@ -948,7 +1155,7 @@ export default function MapPage() {
         setSelectedLocationId(locationId);
       }, MARKER_FEEDBACK_MS);
     },
-    [openingLocationId, selectedLocationId],
+    [isMapIntroActive, openingLocationId, selectedLocationId],
   );
 
   const openDiscoveryPoint = useCallback(
@@ -956,7 +1163,8 @@ export default function MapPage() {
       if (
         selectedLocationId ||
         openingLocationId ||
-        selectedDiscoveryPointId
+        selectedDiscoveryPointId ||
+        isMapIntroActive
       ) {
         return;
       }
@@ -967,7 +1175,12 @@ export default function MapPage() {
 
       setSelectedDiscoveryPointId(discoveryPointId);
     },
-    [openingLocationId, selectedDiscoveryPointId, selectedLocationId],
+    [
+      isMapIntroActive,
+      openingLocationId,
+      selectedDiscoveryPointId,
+      selectedLocationId,
+    ],
   );
 
   const resetJourney = () => {
@@ -997,7 +1210,11 @@ export default function MapPage() {
   return (
     <main
       aria-label="Interactive world map"
-      className={`fixed inset-0 overflow-hidden bg-[#1f1a12] touch-none cursor-grab select-none active:cursor-grabbing ${
+      className={`fixed inset-0 overflow-hidden bg-[#1f1a12] touch-none select-none ${
+        isMapIntroActive
+          ? "map-intro-active cursor-pointer"
+          : "cursor-grab active:cursor-grabbing"
+      } ${hasMapIntroSettled ? "map-intro-settled" : ""} ${
         isVideoOpen ? "cinematic-video-opening" : ""
       }`}
       onPointerDown={handlePointerDown}
@@ -1046,7 +1263,9 @@ export default function MapPage() {
       </div>
       <MapLayer
         activeConnectionId={activeConnectionId}
-        isInteractionDisabled={isVideoOpen || isDiscoveryPointOpen}
+        isInteractionDisabled={
+          isMapIntroActive || isVideoOpen || isDiscoveryPointOpen
+        }
         mapContentRef={mapContentRef}
         mapContentSize={mapContentSize}
         mapLayerRef={mapLayerRef}
@@ -1073,6 +1292,22 @@ export default function MapPage() {
           />
         ))}
       </div>
+      {isMapIntroActive ? (
+        <button
+          aria-label="Spring kort-intro over"
+          className="map-intro-curtain fixed inset-0 z-50 cursor-pointer bg-black text-white focus:outline-none"
+          onClick={skipMapIntro}
+          onPointerDown={(event) => {
+            event.stopPropagation();
+            skipMapIntro();
+          }}
+          type="button"
+        >
+          <span className="absolute bottom-8 left-1/2 -translate-x-1/2 text-xs font-semibold uppercase tracking-[0.28em] text-white/55">
+            Klik for at springe over
+          </span>
+        </button>
+      ) : null}
       {selectedDiscoveryPoint ? (
         <DiscoveryPointOverlay
           discoveryPoint={selectedDiscoveryPoint}
