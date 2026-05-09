@@ -146,7 +146,7 @@ const discoveryPoints: DiscoveryPoint[] = [
     x: 22,
     y: 28,
     type: "basicInfoProfile",
-    content: "Basic info profile",
+    content: "Mine info",
   },
 ];
 
@@ -280,6 +280,9 @@ const DiscoveryPointMarker = memo(function DiscoveryPointMarker({
           <span className="discovery-point-slate-body" />
         </span>
       ) : null}
+      {discoveryPoint.type === "instantMove" ? (
+        <span className="discovery-point-tooltip">Y dance move</span>
+      ) : null}
       {discoveryPoint.type === "faxeCan" ? (
         <span aria-hidden="true" className="discovery-point-can-icon">
           <span className="discovery-point-can-top" />
@@ -387,8 +390,22 @@ type DiscoveryPointOverlayProps = {
   onClose: () => void;
 };
 
+type ProgressListItem = {
+  id: string;
+  label: string;
+};
+
+type ProgressWidgetProps = {
+  completedDiscoveryItems: ProgressListItem[];
+  completedMainItems: ProgressListItem[];
+  isExpanded: boolean;
+  missingDiscoveryItems: ProgressListItem[];
+  missingMainItems: ProgressListItem[];
+  onToggle: () => void;
+};
+
 const discoveryPointTypeLabels: Record<DiscoveryPointType, string> = {
-  basicInfoProfile: "Basic info",
+  basicInfoProfile: "Mine info",
   calendarArtifact: "Kalender",
   faxeCan: "Faxe Kondi",
   instantMove: "Instant move",
@@ -404,7 +421,7 @@ const basicInfoProfile = {
     { label: "Tutor erfaring", value: "Gammel" },
     { label: "Civil status", value: "Lykkelig" },
     { label: "Email", value: "mikkel.juul.christiansen@gmail.com" },
-    { label: "Phone number", value: "+45 60563346" },
+    { label: "Telefon", value: "+45 60563346" },
   ],
 } as const;
 
@@ -480,18 +497,13 @@ const InstantMoveOverlay = memo(function InstantMoveOverlay({
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
   useEffect(() => {
-    const closeTimeout = setTimeout(onClose, 5000);
     const video = videoRef.current;
 
     if (video) {
       video.muted = false;
       video.play().catch(() => {});
     }
-
-    return () => {
-      clearTimeout(closeTimeout);
-    };
-  }, [onClose]);
+  }, []);
 
   return (
     <div className="instant-move-overlay fixed inset-0 z-[55] flex items-center justify-center bg-black/75 p-6">
@@ -517,14 +529,14 @@ const BasicInfoProfileOverlay = memo(function BasicInfoProfileOverlay({
 }: BasicInfoProfileOverlayProps) {
   return (
     <div
-      className="basic-info-backdrop fixed inset-0 z-[45] flex items-center justify-center bg-black/60 px-4 py-8 text-white backdrop-blur-[2px]"
+      className="basic-info-backdrop fixed inset-0 z-[45] flex items-start justify-center overflow-y-auto bg-black/60 px-4 py-4 text-white backdrop-blur-[2px] sm:items-center sm:py-8"
       onClick={onClose}
       onPointerDown={(event) => event.stopPropagation()}
     >
       <div
-        aria-label="Basic info profile"
+        aria-label="Mine info"
         aria-modal="true"
-        className="basic-info-dossier relative w-full max-w-4xl overflow-hidden rounded-[2rem] border border-amber-100/25 bg-[#21170d]/90 px-5 py-6 shadow-2xl shadow-black/50 sm:px-8 sm:py-8"
+        className="basic-info-dossier relative max-h-[calc(100dvh-2rem)] w-full max-w-4xl overflow-y-auto rounded-[2rem] border border-amber-100/25 bg-[#21170d]/90 px-5 py-6 shadow-2xl shadow-black/50 sm:max-h-[calc(100dvh-4rem)] sm:px-8 sm:py-8"
         onClick={(event) => event.stopPropagation()}
         role="dialog"
       >
@@ -536,11 +548,11 @@ const BasicInfoProfileOverlay = memo(function BasicInfoProfileOverlay({
                 Explorer dossier
               </p>
               <h2 className="mt-2 font-serif text-2xl text-amber-50 sm:text-3xl">
-                Basic info
+                Mine info
               </h2>
             </div>
             <button
-              aria-label="Close basic info profile"
+              aria-label="Luk mine info"
               className="rounded-full border border-amber-100/25 bg-amber-100/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-amber-50 transition hover:scale-105 hover:bg-amber-100/20 focus:outline-none focus:ring-2 focus:ring-amber-100/70"
               onClick={onClose}
               type="button"
@@ -549,7 +561,7 @@ const BasicInfoProfileOverlay = memo(function BasicInfoProfileOverlay({
             </button>
           </div>
 
-          <div className="basic-info-layout mt-8 grid items-center gap-6 md:grid-cols-[1fr_auto_1fr] md:gap-10">
+          <div className="basic-info-layout mt-8 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 sm:gap-6 md:gap-10">
             <div className="basic-info-label-column basic-info-label-column-left space-y-4">
               {basicInfoProfile.left.map((field) => (
                 <div
@@ -562,7 +574,7 @@ const BasicInfoProfileOverlay = memo(function BasicInfoProfileOverlay({
               ))}
             </div>
 
-            <div className="basic-info-portrait mx-auto flex h-48 w-40 items-end justify-center rounded-t-full border border-amber-100/30 bg-amber-100/10 shadow-[0_0_38px_rgba(251,191,36,0.18)] sm:h-56 sm:w-48">
+            <div className="basic-info-portrait mx-auto flex h-32 w-24 items-end justify-center rounded-t-full border border-amber-100/30 bg-amber-100/10 shadow-[0_0_38px_rgba(251,191,36,0.18)] sm:h-56 sm:w-48">
               <div aria-hidden="true" className="basic-info-silhouette">
                 <span className="basic-info-silhouette-head" />
                 <span className="basic-info-silhouette-body" />
@@ -628,6 +640,102 @@ const DiscoveryPointOverlay = memo(function DiscoveryPointOverlay({
           Tilbage
         </button>
       </div>
+    </div>
+  );
+});
+
+const ProgressWidget = memo(function ProgressWidget({
+  completedDiscoveryItems,
+  completedMainItems,
+  isExpanded,
+  missingDiscoveryItems,
+  missingMainItems,
+  onToggle,
+}: ProgressWidgetProps) {
+  const mainTotal = completedMainItems.length + missingMainItems.length;
+  const discoveryTotal =
+    completedDiscoveryItems.length + missingDiscoveryItems.length;
+
+  const renderItemList = (items: ProgressListItem[], emptyText: string) => (
+    <ul className="mt-2 space-y-1">
+      {items.length ? (
+        items.map((item) => (
+          <li
+            className="rounded-lg border border-amber-100/10 bg-amber-50/5 px-2 py-1 text-[0.68rem] leading-snug text-amber-50/85"
+            key={item.id}
+          >
+            {item.label}
+          </li>
+        ))
+      ) : (
+        <li className="px-2 py-1 text-[0.68rem] italic text-amber-50/45">
+          {emptyText}
+        </li>
+      )}
+    </ul>
+  );
+
+  return (
+    <div
+      className="fixed bottom-4 left-1/2 z-40 w-[min(92vw,28rem)] -translate-x-1/2 text-amber-50 sm:bottom-5"
+      onPointerDown={(event) => event.stopPropagation()}
+    >
+      {isExpanded ? (
+        <div
+          className="mb-2 rounded-2xl border border-amber-100/25 bg-[#1f160d]/75 p-3 shadow-[0_0_28px_rgba(251,191,36,0.16)] backdrop-blur-md"
+          id="progress-panel"
+        >
+          <div className="grid gap-3 sm:grid-cols-2">
+            <section>
+              <h2 className="font-serif text-sm text-amber-100">
+                Main Journey
+              </h2>
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                <div>
+                  <p className="text-[0.62rem] font-semibold uppercase tracking-[0.22em] text-emerald-100/65">
+                    Completed
+                  </p>
+                  {renderItemList(completedMainItems, "Nothing yet")}
+                </div>
+                <div>
+                  <p className="text-[0.62rem] font-semibold uppercase tracking-[0.22em] text-amber-100/65">
+                    Missing
+                  </p>
+                  {renderItemList(missingMainItems, "All seen")}
+                </div>
+              </div>
+            </section>
+            <section>
+              <h2 className="font-serif text-sm text-amber-100">Discovery</h2>
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                <div>
+                  <p className="text-[0.62rem] font-semibold uppercase tracking-[0.22em] text-emerald-100/65">
+                    Completed
+                  </p>
+                  {renderItemList(completedDiscoveryItems, "Nothing yet")}
+                </div>
+                <div>
+                  <p className="text-[0.62rem] font-semibold uppercase tracking-[0.22em] text-amber-100/65">
+                    Missing
+                  </p>
+                  {renderItemList(missingDiscoveryItems, "All found")}
+                </div>
+              </div>
+            </section>
+          </div>
+        </div>
+      ) : null}
+      <button
+        aria-controls="progress-panel"
+        aria-expanded={isExpanded}
+        className="mx-auto flex max-w-full items-center justify-center gap-3 rounded-full border border-amber-100/25 bg-[#21170d]/62 px-4 py-2 text-[0.7rem] font-semibold uppercase tracking-[0.16em] shadow-[0_0_18px_rgba(251,191,36,0.14)] backdrop-blur-sm transition hover:bg-[#21170d]/78 focus:outline-none focus:ring-2 focus:ring-amber-100/60 sm:text-xs"
+        onClick={onToggle}
+        type="button"
+      >
+        <span>Main Journey {completedMainItems.length} / {mainTotal}</span>
+        <span className="h-1 w-1 rounded-full bg-amber-100/45" />
+        <span>Discovery {completedDiscoveryItems.length} / {discoveryTotal}</span>
+      </button>
     </div>
   );
 });
@@ -759,6 +867,7 @@ export default function MapPage() {
   const [isMapIntroActive, setIsMapIntroActive] = useState(true);
   const [hasMapIntroSettled, setHasMapIntroSettled] = useState(false);
   const [isPinkMode, setIsPinkMode] = useState(false);
+  const [isProgressPanelOpen, setIsProgressPanelOpen] = useState(false);
   const [openingLocationId, setOpeningLocationId] = useState<string | null>(
     null,
   );
@@ -778,6 +887,7 @@ export default function MapPage() {
     locations[0].id,
   ]);
   const [visitedLocationIds, setVisitedLocationIds] = useState<string[]>([]);
+  const [foundDiscoveryIds, setFoundDiscoveryIds] = useState<string[]>([]);
   const [mapContentSize, setMapContentSize] = useState<Size>({
     width: 0,
     height: 0,
@@ -818,9 +928,47 @@ export default function MapPage() {
     () => new Set(visitedLocationIds),
     [visitedLocationIds],
   );
+  const foundDiscoveryIdSet = useMemo(
+    () => new Set(foundDiscoveryIds),
+    [foundDiscoveryIds],
+  );
   const revealedConnectionIdSet = useMemo(
     () => new Set(revealedConnectionIds),
     [revealedConnectionIds],
+  );
+  const completedMainItems = useMemo(
+    () =>
+      locations
+        .filter((location) => visitedLocationIdSet.has(location.id))
+        .map((location) => ({ id: location.id, label: location.name })),
+    [visitedLocationIdSet],
+  );
+  const missingMainItems = useMemo(
+    () =>
+      locations
+        .filter((location) => !visitedLocationIdSet.has(location.id))
+        .map((location) => ({ id: location.id, label: location.name })),
+    [visitedLocationIdSet],
+  );
+  const completedDiscoveryItems = useMemo(
+    () =>
+      discoveryPoints
+        .filter((discoveryPoint) => foundDiscoveryIdSet.has(discoveryPoint.id))
+        .map((discoveryPoint) => ({
+          id: discoveryPoint.id,
+          label: discoveryPointTypeLabels[discoveryPoint.type],
+        })),
+    [foundDiscoveryIdSet],
+  );
+  const missingDiscoveryItems = useMemo(
+    () =>
+      discoveryPoints
+        .filter((discoveryPoint) => !foundDiscoveryIdSet.has(discoveryPoint.id))
+        .map((discoveryPoint) => ({
+          id: discoveryPoint.id,
+          label: discoveryPointTypeLabels[discoveryPoint.type],
+        })),
+    [foundDiscoveryIdSet],
   );
   const nextAvailableLocationId = useMemo(
     () =>
@@ -1140,6 +1288,10 @@ export default function MapPage() {
     setOpeningLocationId(null);
   }, [completeLocation, selectedLocationId]);
 
+  const toggleProgressPanel = useCallback(() => {
+    setIsProgressPanelOpen((current) => !current);
+  }, []);
+
   const openLocation = useCallback(
     (locationId: string) => {
       if (isMapIntroActive || selectedLocationId || openingLocationId) {
@@ -1173,6 +1325,11 @@ export default function MapPage() {
         setIsPinkMode(true);
       }
 
+      setFoundDiscoveryIds((currentIds) =>
+        currentIds.includes(discoveryPointId)
+          ? currentIds
+          : [...currentIds, discoveryPointId],
+      );
       setSelectedDiscoveryPointId(discoveryPointId);
     },
     [
@@ -1200,6 +1357,8 @@ export default function MapPage() {
     setRevealedConnectionIds([]);
     setUnlockedLocationIds([locations[0].id]);
     setVisitedLocationIds([]);
+    setFoundDiscoveryIds([]);
+    setIsProgressPanelOpen(false);
     dragStart.current = null;
     applyCameraOffset(
       getCameraOffsetForLocation(locations[0], mapContentSize),
@@ -1261,6 +1420,14 @@ export default function MapPage() {
           </div>
         ) : null}
       </div>
+      <ProgressWidget
+        completedDiscoveryItems={completedDiscoveryItems}
+        completedMainItems={completedMainItems}
+        isExpanded={isProgressPanelOpen}
+        missingDiscoveryItems={missingDiscoveryItems}
+        missingMainItems={missingMainItems}
+        onToggle={toggleProgressPanel}
+      />
       <MapLayer
         activeConnectionId={activeConnectionId}
         isInteractionDisabled={

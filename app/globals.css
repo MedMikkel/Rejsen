@@ -552,6 +552,33 @@ body {
   transform: translate(-50%, -50%) scale(1.22);
 }
 
+.discovery-point-tooltip {
+  background: rgba(0, 0, 0, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 9999px;
+  box-shadow: 0 10px 15px rgba(0, 0, 0, 0.24);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 500;
+  left: 50%;
+  opacity: 0;
+  padding: 0.25rem 0.75rem;
+  pointer-events: none;
+  position: absolute;
+  top: calc(100% + 0.55rem);
+  transform: translate(-50%, 0);
+  transition:
+    opacity 160ms ease,
+    transform 160ms ease;
+  white-space: nowrap;
+  z-index: 10;
+}
+
+.discovery-point-marker:hover .discovery-point-tooltip {
+  opacity: 1;
+  transform: translate(-50%, 0.25rem);
+}
+
 .discovery-point-faxeCan {
   background: #fdf2f8;
   border-color: rgba(17, 24, 39, 0.9);
