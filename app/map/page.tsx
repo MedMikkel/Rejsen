@@ -87,7 +87,7 @@ const locations: Location[] = [
   },
   {
     id: "eastern-watch",
-    name: "Under produktion",
+    name: "Tid, energi og motivation",
     x: 70,
     y: 34,
     unlocked: false,
@@ -96,15 +96,15 @@ const locations: Location[] = [
   {
     id: "southern-isle",
     name: "Djurs Sommertutorland",
-    x: 50,
-    y: 78,
+    x: 40,
+    y: 82,
     unlocked: false,
     videoSrc: videos.location5,
   },
   {
     id: "final-sanctum",
-    name: "Please vælg mig",
-    x: 62,
+    name: "Tak for rejsen",
+    x: 72,
     y: 58,
     unlocked: false,
     videoSrc: videos.finale,
@@ -125,7 +125,7 @@ const discoveryPoints: DiscoveryPoint[] = [
     x: 40,
     y: 73,
     type: "faxeCan",
-    content: "Du fandt en gemt Faxe Kondi. Pink for the win.",
+    content: "Pink Mode Aktiveret.",
   },
   {
     id: "calendar-artifact",
@@ -158,6 +158,8 @@ const PATH_IGNITE_MS = 900;
 const MAP_CAMERA_SCALE = 1.75;
 const MAP_INTRO_CAMERA_SCALE = 2.05;
 const MAP_INTRO_DURATION_MS = 2400;
+const DRAG_HINT_VISIBLE_MS = 2000;
+const DRAG_HINT_FADE_MS = 480;
 const PINK_MODE_DISCOVERY_POINT_ID = "pink-mode-artifact";
 
 const FINAL_LOCATION_ID = "final-sanctum";
@@ -740,6 +742,36 @@ const ProgressWidget = memo(function ProgressWidget({
   );
 });
 
+type DragHintOverlayProps = {
+  isVisible: boolean;
+};
+
+const DragHintOverlay = memo(function DragHintOverlay({
+  isVisible,
+}: DragHintOverlayProps) {
+  return (
+    <div
+      aria-live="polite"
+      className={`drag-hint-overlay pointer-events-none fixed left-1/2 z-[60] items-center gap-3 rounded-full border px-4 py-2 text-amber-50 shadow-2xl backdrop-blur-md ${
+        isVisible ? "drag-hint-overlay-visible" : ""
+      }`}
+    >
+      <span aria-hidden="true" className="drag-hint-cursor">
+        <span className="drag-hint-cursor-palm" />
+      </span>
+      <span className="text-sm font-medium tracking-wide">
+        Træk i kortet for at udforske
+      </span>
+      <span
+        aria-hidden="true"
+        className="drag-hint-motion text-xs font-semibold uppercase tracking-[0.2em] text-amber-100/65"
+      >
+        ← drag →
+      </span>
+    </div>
+  );
+});
+
 type MapLayerProps = {
   activeConnectionId: string | null;
   isInteractionDisabled: boolean;
@@ -866,6 +898,8 @@ export default function MapPage() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isMapIntroActive, setIsMapIntroActive] = useState(true);
   const [hasMapIntroSettled, setHasMapIntroSettled] = useState(false);
+  const [showDragHint, setShowDragHint] = useState(false);
+  const [isDragHintVisible, setIsDragHintVisible] = useState(false);
   const [isPinkMode, setIsPinkMode] = useState(false);
   const [isProgressPanelOpen, setIsProgressPanelOpen] = useState(false);
   const [openingLocationId, setOpeningLocationId] = useState<string | null>(
@@ -901,6 +935,15 @@ export default function MapPage() {
   const openVideoTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const activePathTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mapIntroTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const dragHintRevealTimeout = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+  const dragHintHideTimeout = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+  const dragHintUnmountTimeout = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
   const panFrame = useRef<number | null>(null);
   const cameraTransitionTimeout = useRef<ReturnType<typeof setTimeout> | null>(
     null,
@@ -1096,6 +1139,42 @@ export default function MapPage() {
   }, [isPinkMode]);
 
   useEffect(() => {
+    if (!hasMapIntroSettled) {
+      return;
+    }
+
+    dragHintRevealTimeout.current = setTimeout(() => {
+      setShowDragHint(true);
+
+      requestAnimationFrame(() => {
+        setIsDragHintVisible(true);
+      });
+
+      dragHintHideTimeout.current = setTimeout(() => {
+        setIsDragHintVisible(false);
+
+        dragHintUnmountTimeout.current = setTimeout(() => {
+          setShowDragHint(false);
+        }, DRAG_HINT_FADE_MS);
+      }, DRAG_HINT_VISIBLE_MS);
+    }, 0);
+
+    return () => {
+      if (dragHintRevealTimeout.current) {
+        clearTimeout(dragHintRevealTimeout.current);
+      }
+
+      if (dragHintHideTimeout.current) {
+        clearTimeout(dragHintHideTimeout.current);
+      }
+
+      if (dragHintUnmountTimeout.current) {
+        clearTimeout(dragHintUnmountTimeout.current);
+      }
+    };
+  }, [hasMapIntroSettled]);
+
+  useEffect(() => {
     const updateMapContentSize = () => {
       if (!mapContentRef.current) {
         return;
@@ -1105,6 +1184,10 @@ export default function MapPage() {
         width: mapContentRef.current.clientWidth,
         height: mapContentRef.current.clientHeight,
       };
+
+      if (!nextSize.width || !nextSize.height) {
+        return;
+      }
 
       setMapContentSize((currentSize) =>
         currentSize.width === nextSize.width &&
@@ -1146,6 +1229,19 @@ export default function MapPage() {
 
       if (mapIntroTimeout.current) {
         clearTimeout(mapIntroTimeout.current);
+        mapIntroTimeout.current = null;
+      }
+
+      if (dragHintRevealTimeout.current) {
+        clearTimeout(dragHintRevealTimeout.current);
+      }
+
+      if (dragHintHideTimeout.current) {
+        clearTimeout(dragHintHideTimeout.current);
+      }
+
+      if (dragHintUnmountTimeout.current) {
+        clearTimeout(dragHintUnmountTimeout.current);
       }
 
       if (panFrame.current) {
@@ -1154,8 +1250,10 @@ export default function MapPage() {
 
       if (cameraTransitionTimeout.current) {
         clearTimeout(cameraTransitionTimeout.current);
+        cameraTransitionTimeout.current = null;
       }
 
+      hasInitializedCamera.current = false;
       resizeObserver?.disconnect();
       window.removeEventListener("resize", updateMapContentSize);
     };
@@ -1428,6 +1526,9 @@ export default function MapPage() {
         missingMainItems={missingMainItems}
         onToggle={toggleProgressPanel}
       />
+      {showDragHint && !isMapIntroActive && !isVideoOpen && !isDiscoveryPointOpen ? (
+        <DragHintOverlay isVisible={isDragHintVisible} />
+      ) : null}
       <MapLayer
         activeConnectionId={activeConnectionId}
         isInteractionDisabled={
@@ -1469,11 +1570,7 @@ export default function MapPage() {
             skipMapIntro();
           }}
           type="button"
-        >
-          <span className="absolute bottom-8 left-1/2 -translate-x-1/2 text-xs font-semibold uppercase tracking-[0.28em] text-white/55">
-            Klik for at springe over
-          </span>
-        </button>
+        />
       ) : null}
       {selectedDiscoveryPoint ? (
         <DiscoveryPointOverlay

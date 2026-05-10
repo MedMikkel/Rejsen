@@ -318,6 +318,108 @@ body {
   animation: map-intro-start-glow 900ms ease-out both;
 }
 
+.drag-hint-overlay {
+  background:
+    linear-gradient(135deg, rgba(255, 244, 214, 0.08), transparent 38%),
+    rgba(25, 17, 10, 0.68);
+  border-color: rgba(254, 243, 199, 0.22);
+  box-shadow:
+    0 0 24px rgba(251, 191, 36, 0.13),
+    inset 0 0 18px rgba(254, 243, 199, 0.05);
+  color: rgba(255, 251, 235, 0.92);
+  display: none;
+  font-family: Georgia, "Times New Roman", serif;
+  opacity: 0;
+  top: 50%;
+  transform: translate3d(-50%, calc(-50% + 0.75rem), 0);
+  transition:
+    opacity 500ms ease,
+    transform 500ms ease;
+}
+
+.drag-hint-overlay-visible {
+  opacity: 1;
+  transform: translate3d(-50%, -50%, 0);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .drag-hint-overlay {
+    display: flex;
+  }
+}
+
+.drag-hint-overlay::before,
+.drag-hint-overlay::after {
+  background: linear-gradient(
+    90deg,
+    rgba(254, 243, 199, 0),
+    rgba(254, 243, 199, 0.24),
+    rgba(254, 243, 199, 0)
+  );
+  content: "";
+  height: 1px;
+  position: absolute;
+  width: 2.25rem;
+}
+
+.drag-hint-overlay::before {
+  right: calc(100% - 0.35rem);
+}
+
+.drag-hint-overlay::after {
+  left: calc(100% - 0.35rem);
+}
+
+.drag-hint-cursor {
+  display: inline-block;
+  height: 1.25rem;
+  position: relative;
+  width: 1.25rem;
+}
+
+.drag-hint-cursor::before,
+.drag-hint-cursor::after,
+.drag-hint-cursor-palm {
+  background: rgba(254, 243, 199, 0.86);
+  border: 1px solid rgba(120, 53, 15, 0.78);
+  box-shadow: 0 0 9px rgba(251, 191, 36, 0.18);
+  position: absolute;
+}
+
+.drag-hint-cursor::before {
+  border-radius: 9999px;
+  content: "";
+  height: 0.95rem;
+  left: 0.44rem;
+  top: 0.02rem;
+  transform: rotate(-8deg);
+  width: 0.36rem;
+}
+
+.drag-hint-cursor::after {
+  border-radius: 9999px 9999px 0.35rem 0.35rem;
+  content: "";
+  height: 0.86rem;
+  left: 0.68rem;
+  top: 0.3rem;
+  transform: rotate(18deg);
+  width: 0.34rem;
+}
+
+.drag-hint-cursor-palm {
+  border-radius: 0.5rem 0.5rem 0.55rem 0.55rem;
+  bottom: 0.05rem;
+  display: block;
+  height: 0.66rem;
+  left: 0.18rem;
+  transform: rotate(-14deg);
+  width: 0.78rem;
+}
+
+.drag-hint-motion {
+  font-family: Arial, Helvetica, sans-serif;
+}
+
 .location-marker-start {
   position: relative;
   z-index: 2;
