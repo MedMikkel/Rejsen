@@ -5,6 +5,7 @@ export const videos = {
   location3: "/videos/location3.mp4",
   location4: "/videos/location4.mp4",
   location5: "/videos/location5.mp4",
+  hojskoleMemory: "/videos/hojskole-memory.mp4",
   instantMove: "/videos/instant-move.mp4",
   finale: "/videos/finale.mp4",
 } as const;

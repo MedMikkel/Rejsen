@@ -301,6 +301,31 @@ body {
   }
 }
 
+@keyframes hojskole-memory-focus {
+  0%,
+  100% {
+    opacity: 0.82;
+    transform: translate(-50%, -50%) rotate(-5deg) scale(1);
+  }
+
+  50% {
+    opacity: 1;
+    transform: translate(-50%, -50%) rotate(-5deg) scale(1.07);
+  }
+}
+
+@keyframes hojskole-memory-panel-rise {
+  from {
+    opacity: 0;
+    transform: translateY(0.6rem) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 .map-ambient-layer {
   animation: map-ambient-drift 21s ease-in-out infinite;
   transform-origin: center;
@@ -865,6 +890,55 @@ body {
   width: 18px;
 }
 
+.discovery-point-hojskoleMemory {
+  animation: hojskole-memory-focus 5.6s ease-in-out infinite;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  color: rgba(69, 39, 18, 0.86);
+  height: auto;
+  opacity: 0.96;
+  transform: translate(-50%, -50%) rotate(-5deg);
+  width: auto;
+}
+
+.discovery-point-hojskoleMemory::after {
+  display: none;
+}
+
+.discovery-point-hojskoleMemory:hover,
+.discovery-point-hojskoleMemory:focus,
+.discovery-point-hojskoleMemory.discovery-point-focused {
+  box-shadow: none;
+  color: rgba(43, 25, 12, 0.98);
+  opacity: 1;
+  transform: translate(-50%, -50%) rotate(-5deg) scale(1.12);
+}
+
+.discovery-point-hak-label {
+  background:
+    linear-gradient(110deg, rgba(255, 248, 220, 0.16), rgba(120, 53, 15, 0.08)),
+    rgba(255, 248, 220, 0.24);
+  border-bottom: 1px solid rgba(69, 39, 18, 0.5);
+  border-radius: 46% 54% 48% 52% / 34% 42% 58% 46%;
+  box-shadow:
+    0 1px 0 rgba(255, 248, 220, 0.32),
+    0 4px 10px rgba(45, 33, 20, 0.12);
+  display: block;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 0.82rem;
+  font-style: italic;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  line-height: 1;
+  padding: 0.2rem 0.34rem 0.24rem;
+  text-shadow:
+    0 1px 0 rgba(255, 248, 220, 0.45),
+    0 0 8px rgba(255, 248, 220, 0.26);
+  white-space: nowrap;
+}
+
 .discovery-point-basicInfoProfile::after {
   display: none;
 }
@@ -1156,6 +1230,54 @@ body {
   animation: instant-move-pop 180ms ease-out both;
 }
 
+.hojskole-memory-backdrop {
+  animation: video-overlay-fade-in 240ms ease-out both;
+  background:
+    radial-gradient(circle at 56% 65%, rgba(255, 244, 214, 0.24), transparent 10rem),
+    radial-gradient(circle at center, rgba(0, 0, 0, 0.18), rgba(0, 0, 0, 0.58));
+  pointer-events: none;
+}
+
+.hojskole-memory-panel {
+  animation: hojskole-memory-panel-rise 420ms ease-out both;
+  border: 1px solid rgba(254, 243, 199, 0.2);
+  border-radius: 1.5rem;
+  background:
+    linear-gradient(135deg, rgba(255, 244, 214, 0.08), transparent 42%),
+    rgba(31, 22, 13, 0.62);
+  box-shadow:
+    0 18px 45px rgba(0, 0, 0, 0.32),
+    inset 0 0 30px rgba(254, 243, 199, 0.04);
+  max-width: min(90vw, 42rem);
+  padding: 1.4rem 1.6rem;
+  backdrop-filter: blur(6px);
+}
+
+.hojskole-memory-kicker {
+  color: rgba(253, 230, 138, 0.72);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+}
+
+.hojskole-memory-text {
+  color: rgba(255, 251, 235, 0.96);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(1.35rem, 4vw, 3rem);
+  letter-spacing: 0.04em;
+  line-height: 1.14;
+  margin-top: 0.75rem;
+  min-height: 1.2em;
+  text-shadow:
+    0 2px 10px rgba(0, 0, 0, 0.55),
+    0 0 24px rgba(253, 230, 138, 0.18);
+}
+
+.hojskole-memory-panel-resolved .hojskole-memory-text {
+  letter-spacing: 0.01em;
+}
+
 .energy-path-shell {
   height: 3px;
   pointer-events: none;
@@ -1314,6 +1436,57 @@ body {
   box-shadow: 0 0 16px rgba(244, 114, 182, 0.65);
 }
 
+.pink-mode .discovery-point-hojskoleMemory,
+.pink-mode .discovery-point-hojskoleMemory:hover,
+.pink-mode .discovery-point-hojskoleMemory:focus {
+  background: transparent;
+  box-shadow: none;
+  color: rgba(131, 24, 67, 0.98);
+  filter: drop-shadow(0 0 8px rgba(244, 114, 182, 0.58));
+}
+
+.pink-mode .discovery-point-hak-label {
+  background:
+    linear-gradient(110deg, rgba(251, 207, 232, 0.32), rgba(244, 114, 182, 0.2)),
+    rgba(255, 241, 242, 0.5);
+  border-bottom-color: rgba(131, 24, 67, 0.72);
+  box-shadow:
+    0 0 0 1px rgba(251, 207, 232, 0.38),
+    0 0 16px rgba(244, 114, 182, 0.5),
+    0 5px 14px rgba(80, 7, 36, 0.2);
+  text-shadow:
+    0 1px 0 rgba(255, 241, 242, 0.72),
+    0 0 10px rgba(244, 114, 182, 0.72);
+}
+
+.pink-mode .hojskole-memory-backdrop {
+  background:
+    radial-gradient(circle at 76% 76%, rgba(244, 114, 182, 0.28), transparent 11rem),
+    radial-gradient(circle at center, rgba(80, 7, 36, 0.2), rgba(0, 0, 0, 0.62));
+}
+
+.pink-mode .hojskole-memory-panel {
+  border-color: rgba(251, 207, 232, 0.34);
+  background:
+    linear-gradient(135deg, rgba(251, 207, 232, 0.13), transparent 42%),
+    rgba(80, 7, 36, 0.54);
+  box-shadow:
+    0 18px 45px rgba(80, 7, 36, 0.32),
+    0 0 34px rgba(244, 114, 182, 0.18),
+    inset 0 0 30px rgba(251, 207, 232, 0.06);
+}
+
+.pink-mode .hojskole-memory-kicker {
+  color: rgba(251, 207, 232, 0.86);
+}
+
+.pink-mode .hojskole-memory-text {
+  color: rgba(255, 241, 242, 0.98);
+  text-shadow:
+    0 2px 10px rgba(80, 7, 36, 0.58),
+    0 0 26px rgba(244, 114, 182, 0.28);
+}
+
 .pink-mode .location-marker-locked {
   background: #be185d;
   border-color: #500724;
@@ -1338,6 +1511,8 @@ body {
   .calendar-artifact-kicker,
   .calendar-artifact-word,
   .calendar-artifact-close,
+  .discovery-point-hojskoleMemory,
+  .hojskole-memory-panel,
   .instant-move-video,
   .start-marker-ripple,
   .energy-path-active,

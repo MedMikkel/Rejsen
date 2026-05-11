@@ -50,7 +50,8 @@ type DiscoveryPointType =
   | "faxeCan"
   | "calendarArtifact"
   | "instantMove"
-  | "basicInfoProfile";
+  | "basicInfoProfile"
+  | "hojskoleMemory";
 
 type DiscoveryPoint = {
   id: string;
@@ -136,8 +137,8 @@ const discoveryPoints: DiscoveryPoint[] = [
   },
   {
     id: "instant-move",
-    x: 71,
-    y: 77,
+    x: 64,
+    y: 89,
     type: "instantMove",
     content: videos.instantMove,
   },
@@ -147,6 +148,13 @@ const discoveryPoints: DiscoveryPoint[] = [
     y: 28,
     type: "basicInfoProfile",
     content: "Mine info",
+  },
+  {
+    id: "hojskole-memory",
+    x: 76,
+    y: 76,
+    type: "hojskoleMemory",
+    content: videos.hojskoleMemory,
   },
 ];
 
@@ -161,6 +169,16 @@ const MAP_INTRO_DURATION_MS = 2400;
 const DRAG_HINT_VISIBLE_MS = 2000;
 const DRAG_HINT_FADE_MS = 480;
 const PINK_MODE_DISCOVERY_POINT_ID = "pink-mode-artifact";
+const HOJSKOLE_MEMORY_DISCOVERY_POINT_ID = "hojskole-memory";
+const HOJSKOLE_MEMORY_LABEL_TEXT = "H.A.K.";
+const HOJSKOLE_MEMORY_REVEAL_TEXT =
+  "Højskoleaccelereret kompetenceniveau";
+const HOJSKOLE_MEMORY_FOCUS_MS = 650;
+const HOJSKOLE_MEMORY_SCRAMBLE_MS = 1850;
+const HOJSKOLE_MEMORY_SCRAMBLE_TICK_MS = 45;
+const HOJSKOLE_MEMORY_READABLE_MS = 2000;
+const HOJSKOLE_MEMORY_SCRAMBLE_CHARS =
+  "ABCDEFGHIJKLMNOPQRSTUVWXYZÆØÅ0123456789.";
 
 const FINAL_LOCATION_ID = "final-sanctum";
 const requiredLocationIds = locations
@@ -196,17 +214,22 @@ const clampCameraOffset = (cameraOffset: Point, containerSize: Size): Point => {
   };
 };
 
-const getCameraOffsetForLocation = (
-  location: Location,
+const getCameraOffsetForMapPoint = (
+  mapPoint: Pick<Location, "x" | "y">,
   containerSize: Size,
 ): Point =>
   clampCameraOffset(
     {
-      x: -MAP_CAMERA_SCALE * ((location.x / 100 - 0.5) * containerSize.width),
-      y: -MAP_CAMERA_SCALE * ((location.y / 100 - 0.5) * containerSize.height),
+      x: -MAP_CAMERA_SCALE * ((mapPoint.x / 100 - 0.5) * containerSize.width),
+      y: -MAP_CAMERA_SCALE * ((mapPoint.y / 100 - 0.5) * containerSize.height),
     },
     containerSize,
   );
+
+const getCameraOffsetForLocation = (
+  location: Location,
+  containerSize: Size,
+): Point => getCameraOffsetForMapPoint(location, containerSize);
 
 type EnergyPathProps = {
   containerSize: Size;
@@ -252,17 +275,21 @@ const EnergyPath = memo(function EnergyPath({
 
 type DiscoveryPointMarkerProps = {
   discoveryPoint: DiscoveryPoint;
+  isFocused: boolean;
   onOpen: (discoveryPointId: string) => void;
 };
 
 const DiscoveryPointMarker = memo(function DiscoveryPointMarker({
   discoveryPoint,
+  isFocused,
   onOpen,
 }: DiscoveryPointMarkerProps) {
   return (
     <button
       aria-label={`Åbn discovery point: ${discoveryPoint.type}`}
-      className={`discovery-point-marker pointer-events-auto discovery-point-${discoveryPoint.type} discovery-point-${discoveryPoint.id}`}
+      className={`discovery-point-marker pointer-events-auto discovery-point-${discoveryPoint.type} discovery-point-${discoveryPoint.id} ${
+        isFocused ? "discovery-point-focused" : ""
+      }`}
       onClick={() => onOpen(discoveryPoint.id)}
       onPointerDown={(event) => event.stopPropagation()}
       style={{
@@ -298,6 +325,11 @@ const DiscoveryPointMarker = memo(function DiscoveryPointMarker({
           <span className="discovery-point-traveller-head" />
           <span className="discovery-point-traveller-body" />
           <span className="discovery-point-traveller-pack" />
+        </span>
+      ) : null}
+      {discoveryPoint.type === "hojskoleMemory" ? (
+        <span className="discovery-point-hak-label">
+          {HOJSKOLE_MEMORY_LABEL_TEXT}
         </span>
       ) : null}
       <span className="sr-only">{discoveryPoint.content}</span>
@@ -390,6 +422,7 @@ const LocationMarker = memo(function LocationMarker({
 type DiscoveryPointOverlayProps = {
   discoveryPoint: DiscoveryPoint;
   onClose: () => void;
+  onOpenVideo: (discoveryPointId: string) => void;
 };
 
 type ProgressListItem = {
@@ -410,6 +443,7 @@ const discoveryPointTypeLabels: Record<DiscoveryPointType, string> = {
   basicInfoProfile: "Mine info",
   calendarArtifact: "Kalender",
   faxeCan: "Faxe Kondi",
+  hojskoleMemory: "H.A.K.",
   instantMove: "Instant move",
 };
 
@@ -602,9 +636,101 @@ const BasicInfoProfileOverlay = memo(function BasicInfoProfileOverlay({
   );
 });
 
+type HojskoleMemoryOverlayProps = {
+  onOpenVideo: () => void;
+};
+
+const scrambleHojskoleMemoryText = (targetText: string, progress: number) => {
+  const resolvedCount = Math.floor(Array.from(targetText).length * progress);
+
+  return Array.from(targetText)
+    .map((character, index) => {
+      if (character === " " || index < resolvedCount) {
+        return character;
+      }
+
+      const randomIndex = Math.floor(
+        Math.random() * HOJSKOLE_MEMORY_SCRAMBLE_CHARS.length,
+      );
+
+      return HOJSKOLE_MEMORY_SCRAMBLE_CHARS[randomIndex];
+    })
+    .join("");
+};
+
+const HojskoleMemoryOverlay = memo(function HojskoleMemoryOverlay({
+  onOpenVideo,
+}: HojskoleMemoryOverlayProps) {
+  const [displayText, setDisplayText] = useState(HOJSKOLE_MEMORY_LABEL_TEXT);
+  const [hasResolved, setHasResolved] = useState(false);
+
+  useEffect(() => {
+    let scrambleInterval: ReturnType<typeof setInterval> | null = null;
+    let openVideoTimeout: ReturnType<typeof setTimeout> | null = null;
+
+    const focusTimeout = setTimeout(() => {
+      const startedAt = Date.now();
+
+      scrambleInterval = setInterval(() => {
+        const elapsed = Date.now() - startedAt;
+        const progress = Math.min(
+          elapsed / HOJSKOLE_MEMORY_SCRAMBLE_MS,
+          1,
+        );
+
+        if (progress >= 1) {
+          if (scrambleInterval) {
+            clearInterval(scrambleInterval);
+            scrambleInterval = null;
+          }
+
+          setDisplayText(HOJSKOLE_MEMORY_REVEAL_TEXT);
+          setHasResolved(true);
+          openVideoTimeout = setTimeout(
+            onOpenVideo,
+            HOJSKOLE_MEMORY_READABLE_MS,
+          );
+          return;
+        }
+
+        setDisplayText(
+          scrambleHojskoleMemoryText(HOJSKOLE_MEMORY_REVEAL_TEXT, progress),
+        );
+      }, HOJSKOLE_MEMORY_SCRAMBLE_TICK_MS);
+    }, HOJSKOLE_MEMORY_FOCUS_MS);
+
+    return () => {
+      clearTimeout(focusTimeout);
+
+      if (scrambleInterval) {
+        clearInterval(scrambleInterval);
+      }
+
+      if (openVideoTimeout) {
+        clearTimeout(openVideoTimeout);
+      }
+    };
+  }, [onOpenVideo]);
+
+  return (
+    <div className="hojskole-memory-backdrop fixed inset-0 z-[45] flex items-center justify-center px-6 text-amber-50">
+      <div
+        aria-live="polite"
+        className={`hojskole-memory-panel text-center ${
+          hasResolved ? "hojskole-memory-panel-resolved" : ""
+        }`}
+      >
+        <p className="hojskole-memory-kicker">Fundet minde</p>
+        <p className="hojskole-memory-text">{displayText}</p>
+      </div>
+    </div>
+  );
+});
+
 const DiscoveryPointOverlay = memo(function DiscoveryPointOverlay({
   discoveryPoint,
   onClose,
+  onOpenVideo,
 }: DiscoveryPointOverlayProps) {
   if (discoveryPoint.type === "basicInfoProfile") {
     return <BasicInfoProfileOverlay onClose={onClose} />;
@@ -616,6 +742,14 @@ const DiscoveryPointOverlay = memo(function DiscoveryPointOverlay({
 
   if (discoveryPoint.type === "instantMove") {
     return <InstantMoveOverlay onClose={onClose} src={discoveryPoint.content} />;
+  }
+
+  if (discoveryPoint.type === "hojskoleMemory") {
+    return (
+      <HojskoleMemoryOverlay
+        onOpenVideo={() => onOpenVideo(discoveryPoint.id)}
+      />
+    );
   }
 
   return (
@@ -911,6 +1045,8 @@ export default function MapPage() {
   const [selectedDiscoveryPointId, setSelectedDiscoveryPointId] = useState<
     string | null
   >(null);
+  const [activeDiscoveryVideoPointId, setActiveDiscoveryVideoPointId] =
+    useState<string | null>(null);
   const [activeConnectionId, setActiveConnectionId] = useState<string | null>(
     null,
   );
@@ -961,8 +1097,18 @@ export default function MapPage() {
       ),
     [selectedDiscoveryPointId],
   );
+  const activeDiscoveryVideoPoint = useMemo(
+    () =>
+      discoveryPoints.find(
+        (discoveryPoint) =>
+          discoveryPoint.id === activeDiscoveryVideoPointId,
+      ),
+    [activeDiscoveryVideoPointId],
+  );
   const isDiscoveryPointOpen = Boolean(selectedDiscoveryPointId);
-  const isVideoOpen = Boolean(selectedLocationId || openingLocationId);
+  const isVideoOpen = Boolean(
+    selectedLocationId || openingLocationId || activeDiscoveryVideoPointId,
+  );
   const unlockedLocationIdSet = useMemo(
     () => new Set(unlockedLocationIds),
     [unlockedLocationIds],
@@ -1276,7 +1422,12 @@ export default function MapPage() {
       return;
     }
 
-    if (selectedLocationId || openingLocationId || selectedDiscoveryPointId) {
+    if (
+      selectedLocationId ||
+      openingLocationId ||
+      selectedDiscoveryPointId ||
+      activeDiscoveryVideoPointId
+    ) {
       return;
     }
 
@@ -1386,6 +1537,31 @@ export default function MapPage() {
     setOpeningLocationId(null);
   }, [completeLocation, selectedLocationId]);
 
+  const completeDiscoveryPoint = useCallback((discoveryPointId: string) => {
+    setFoundDiscoveryIds((currentIds) =>
+      currentIds.includes(discoveryPointId)
+        ? currentIds
+        : [...currentIds, discoveryPointId],
+    );
+  }, []);
+
+  const openDiscoveryVideo = useCallback((discoveryPointId: string) => {
+    setSelectedDiscoveryPointId(null);
+    setActiveDiscoveryVideoPointId(discoveryPointId);
+  }, []);
+
+  const finishDiscoveryVideo = useCallback(() => {
+    if (activeDiscoveryVideoPointId) {
+      completeDiscoveryPoint(activeDiscoveryVideoPointId);
+    }
+
+    setActiveDiscoveryVideoPointId(null);
+  }, [activeDiscoveryVideoPointId, completeDiscoveryPoint]);
+
+  const closeDiscoveryVideo = useCallback(() => {
+    setActiveDiscoveryVideoPointId(null);
+  }, []);
+
   const toggleProgressPanel = useCallback(() => {
     setIsProgressPanelOpen((current) => !current);
   }, []);
@@ -1414,6 +1590,7 @@ export default function MapPage() {
         selectedLocationId ||
         openingLocationId ||
         selectedDiscoveryPointId ||
+        activeDiscoveryVideoPointId ||
         isMapIntroActive
       ) {
         return;
@@ -1423,46 +1600,40 @@ export default function MapPage() {
         setIsPinkMode(true);
       }
 
-      setFoundDiscoveryIds((currentIds) =>
-        currentIds.includes(discoveryPointId)
-          ? currentIds
-          : [...currentIds, discoveryPointId],
-      );
+      if (
+        discoveryPointId === HOJSKOLE_MEMORY_DISCOVERY_POINT_ID &&
+        mapContentSize.width &&
+        mapContentSize.height
+      ) {
+        const discoveryPoint = discoveryPoints.find(
+          (point) => point.id === discoveryPointId,
+        );
+
+        if (discoveryPoint) {
+          applyCameraOffset(
+            getCameraOffsetForMapPoint(discoveryPoint, mapContentSize),
+            true,
+          );
+        }
+      }
+
+      if (discoveryPointId !== HOJSKOLE_MEMORY_DISCOVERY_POINT_ID) {
+        completeDiscoveryPoint(discoveryPointId);
+      }
+
       setSelectedDiscoveryPointId(discoveryPointId);
     },
     [
+      activeDiscoveryVideoPointId,
+      applyCameraOffset,
+      completeDiscoveryPoint,
       isMapIntroActive,
+      mapContentSize,
       openingLocationId,
       selectedDiscoveryPointId,
       selectedLocationId,
     ],
   );
-
-  const resetJourney = () => {
-    if (openVideoTimeout.current) {
-      clearTimeout(openVideoTimeout.current);
-    }
-
-    if (activePathTimeout.current) {
-      clearTimeout(activePathTimeout.current);
-    }
-
-    setIsMenuOpen(false);
-    setOpeningLocationId(null);
-    setSelectedLocationId(null);
-    setSelectedDiscoveryPointId(null);
-    setActiveConnectionId(null);
-    setRevealedConnectionIds([]);
-    setUnlockedLocationIds([locations[0].id]);
-    setVisitedLocationIds([]);
-    setFoundDiscoveryIds([]);
-    setIsProgressPanelOpen(false);
-    dragStart.current = null;
-    applyCameraOffset(
-      getCameraOffsetForLocation(locations[0], mapContentSize),
-      true,
-    );
-  };
 
   return (
     <main
@@ -1480,25 +1651,16 @@ export default function MapPage() {
       onPointerCancel={stopDragging}
       onPointerLeave={stopDragging}
     >
-      <button
-        className="map-control fixed left-4 top-4 z-40 rounded-full border border-white/25 bg-black/45 px-4 py-2 text-sm font-medium text-white backdrop-blur transition hover:bg-black/65 focus:outline-none focus:ring-2 focus:ring-white/70"
-        onClick={resetJourney}
-        onPointerDown={(event) => event.stopPropagation()}
-        type="button"
-      >
-        Genstart
-      </button>
       <div
         className="fixed right-4 top-4 z-40"
         onPointerDown={(event) => event.stopPropagation()}
       >
         <button
-          className="map-control rounded-full border border-white/25 bg-black/45 px-4 py-2 text-sm font-medium text-white backdrop-blur transition hover:bg-black/65 focus:outline-none focus:ring-2 focus:ring-white/70"
+          aria-label="Åbn menu"
+          className="map-control h-3 w-3 rounded-full border border-amber-100/20 bg-amber-100/35 p-0 text-transparent shadow-[0_0_8px_rgba(254,243,199,0.12)] backdrop-blur transition hover:scale-125 hover:bg-amber-100/55 focus:outline-none focus:ring-2 focus:ring-amber-100/45"
           onClick={() => setIsMenuOpen((current) => !current)}
           type="button"
-        >
-          Menu
-        </button>
+        />
         {isMenuOpen ? (
           <div className="map-menu-panel mt-3 min-w-36 overflow-hidden rounded-2xl border border-white/20 bg-black/70 p-2 text-sm text-white shadow-xl backdrop-blur">
             <button
@@ -1555,6 +1717,7 @@ export default function MapPage() {
         {discoveryPoints.map((discoveryPoint) => (
           <DiscoveryPointMarker
             discoveryPoint={discoveryPoint}
+            isFocused={selectedDiscoveryPointId === discoveryPoint.id}
             key={discoveryPoint.id}
             onOpen={openDiscoveryPoint}
           />
@@ -1576,6 +1739,7 @@ export default function MapPage() {
         <DiscoveryPointOverlay
           discoveryPoint={selectedDiscoveryPoint}
           onClose={() => setSelectedDiscoveryPointId(null)}
+          onOpenVideo={openDiscoveryVideo}
         />
       ) : null}
       {selectedLocation ? (
@@ -1584,6 +1748,14 @@ export default function MapPage() {
           onClose={finishSelectedLocation}
           onEnded={finishSelectedLocation}
           src={selectedLocation.videoSrc}
+        />
+      ) : null}
+      {activeDiscoveryVideoPoint ? (
+        <VideoOverlay
+          key={activeDiscoveryVideoPoint.id}
+          onClose={closeDiscoveryVideo}
+          onEnded={finishDiscoveryVideo}
+          src={activeDiscoveryVideoPoint.content}
         />
       ) : null}
     </main>
