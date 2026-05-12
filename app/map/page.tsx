@@ -487,9 +487,6 @@ const CalendarArtifactOverlay = memo(function CalendarArtifactOverlay({
               <span className="mt-1 block h-1 border-b border-amber-100/60" />
             </span>
           </div>
-          <p className="calendar-artifact-kicker mt-5 text-xs font-semibold uppercase tracking-[0.32em] text-amber-100/70">
-            Fleksibel artefakt
-          </p>
           <p className="sr-only">Jeg kan alle datoer</p>
           <p
             aria-hidden="true"

@@ -1194,16 +1194,11 @@ body {
   transform-origin: left center;
 }
 
-.calendar-artifact-kicker,
 .calendar-artifact-word,
 .calendar-artifact-close {
   animation: calendar-artifact-reveal 420ms ease-out both;
   display: inline-block;
   opacity: 0;
-}
-
-.calendar-artifact-kicker {
-  animation-delay: 280ms;
 }
 
 .calendar-artifact-word-1 {
@@ -1508,7 +1503,6 @@ body {
   .basic-info-dossier,
   .calendar-artifact-panel,
   .calendar-artifact-fold,
-  .calendar-artifact-kicker,
   .calendar-artifact-word,
   .calendar-artifact-close,
   .discovery-point-hojskoleMemory,
